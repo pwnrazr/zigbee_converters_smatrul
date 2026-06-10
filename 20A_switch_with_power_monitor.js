@@ -6,6 +6,7 @@ const tz = require('zigbee-herdsman-converters/converters/toZigbee');
 const exposes = require('zigbee-herdsman-converters/lib/exposes');
 const reporting = require('zigbee-herdsman-converters/lib/reporting');
 const e = exposes.presets;
+const fz = require('zigbee-herdsman-converters/converters/fromZigbee');
 
 const fzLocal = {
     // Note: acPowerDivisor attribute is unsupported and not writable.
@@ -34,56 +35,6 @@ const fzLocal = {
     },
 };
 
-const fz = require('zigbee-herdsman-converters/converters/fromZigbee');
-
-
-/* =========================
-   ADDED: Moes startup state
-   ========================= */
-const fzLocalMoes = {
-    moes_startup_onoff: {
-        cluster: 'genOnOff',
-        type: ['attributeReport', 'readResponse'],
-        convert: (model, msg) => {
-            if (msg.data.moesStartUpOnOff === undefined) return;
-
-            const map = {
-                0: 'off',
-                1: 'on',
-                2: 'previous',
-            };
-
-            return {
-                power_on_behavior: map[msg.data.moesStartUpOnOff],
-            };
-        },
-    },
-};
-
-/* =========================
-   ADDED: Moes startup control
-   ========================= */
-const tzLocalMoes = {
-    moes_startup_onoff: {
-        key: ['power_on_behavior'],
-        convertSet: async (entity, key, value) => {
-            const map = {
-                off: 0,
-                on: 1,
-                previous: 2,
-            };
-
-            await entity.write('genOnOff', {
-                moesStartUpOnOff: map[value],
-            });
-        },
-
-        convertGet: async (entity) => {
-            await entity.read('genOnOff', ['moesStartUpOnOff']);
-        },
-    },
-};
-
 const definition = {
     fingerprint: [{modelID: 'TS0001', manufacturerName: '_TZ3000_anptztic'}],
     model: 'TZ3000_anptztic',
@@ -94,12 +45,10 @@ const definition = {
         fz.on_off,
         fzLocal.electrical_measurement,
         fzLocal.metering,
-        fzLocalMoes.moes_startup_onoff,
     ],
 
     toZigbee: [
         tz.on_off,
-        tzLocalMoes.moes_startup_onoff,
     ],
 
     exposes: [
@@ -108,16 +57,10 @@ const definition = {
         e.current(),
         e.voltage(),
         e.energy(),
-        e.enum('power_on_behavior', exposes.access.ALL, [
-            'off',
-            'on',
-            'previous',
-        ]),
     ],
 
     configure: async (device, coordinatorEndpoint) => {
         const endpoint = device.getEndpoint(1);
-
         await reporting.bind(endpoint, coordinatorEndpoint, ['haElectricalMeasurement']);
         await reporting.activePower(endpoint, {min: 5, max: 30, change: 1});
         await reporting.rmsCurrent(endpoint, {min: 5, max: 30, change: 0.01});
