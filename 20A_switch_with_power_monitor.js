@@ -63,7 +63,7 @@ const definition = {
         const endpoint = device.getEndpoint(1);
         await reporting.bind(endpoint, coordinatorEndpoint, ['haElectricalMeasurement', 'seMetering']);
         await reporting.activePower(endpoint, {min: 5, max: 30, change: 1});
-        await reporting.rmsCurrent(endpoint, {min: 5, max: 30, change: 0.01});
+        await reporting.rmsCurrent(endpoint, {min: 5, max: 30, change: 10});
         await reporting.rmsVoltage(endpoint, {min: 5, max: 60, change: 5});
         await reporting.currentSummDelivered(endpoint);
     },
